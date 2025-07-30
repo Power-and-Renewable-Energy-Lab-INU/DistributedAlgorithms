@@ -1,0 +1,2 @@
+id,node,max,min,cost_buy,cost_sell,asset_id
+1,1,10000,0,12,0.01,19
