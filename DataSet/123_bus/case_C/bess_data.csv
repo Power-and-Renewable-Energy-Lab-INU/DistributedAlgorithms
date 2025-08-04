@@ -7,3 +7,4 @@ id,node,capacity,soc_min,soc_max,eff,is_cur_reserve,empty_reserve,fill_reserve,i
 6,20,200,0.1,0.9,0.97,0,0,0,0,0,0.03,0.02,0
 7,21,150,0.1,0.9,0.97,0,0,0,0,0,0.03,0.02,0
 8,27,300,0.1,0.9,0.97,0,0,0,0,0,0.03,0.02,0
+,,,,,,"The value of theses columns varies based on the specific scenario, therefore it is kept empty.",,,,,,,
