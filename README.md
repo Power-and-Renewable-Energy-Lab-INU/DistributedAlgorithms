@@ -19,8 +19,7 @@ The following videos demonstrate auto-configuration on a 3-bus hardware setup wi
 - [v1.mp4](assets/v1.mp4)
 - [v2.mp4](assets/v2.mp4)
 
-<video src="assets/v1.mp4" controls width="480"></video>
-<video src="assets/v2.mp4" controls width="480"></video>
+![Demonstration GIF](assets/v2.gif)
 
 ## Cyclone DDS
 
