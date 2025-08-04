@@ -5,7 +5,7 @@ This repository contains resources related to distributed algorithms research.
 ## Folder Structure
 
 - **assets/**: Contains simulation videos and images.
-- **dataset/**: Contains data used in the research.
+- **SupplementaryMaterials/Dataset/**: Contains data used in the research.
 - **SupplementaryMaterials/**: Consists of supplementary results.
 
 ## Demonstration Videos
