@@ -22,6 +22,8 @@ The following videos demonstrate auto-configuration on a 3-bus hardware setup wi
 ![Demonstration GIF](assets/v2.gif)
 
 #### Host PC setup
+- The host PC interface 4 other PCs screens for combined view
+
 ![Host PC setup](assets/hardware_test_simulation.png)
 
 ## Cyclone DDS
