@@ -21,6 +21,9 @@ The following videos demonstrate auto-configuration on a 3-bus hardware setup wi
 
 ![Demonstration GIF](assets/v2.gif)
 
+#### Host PC setup
+![Host PC setup](assets/hardware_test_simulation.png)
+
 ## Cyclone DDS
 
 The following images show the auto-configuration demonstration, where the backend data sharing is handled using Cyclone DDS:
