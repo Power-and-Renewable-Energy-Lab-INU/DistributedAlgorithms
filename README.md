@@ -8,6 +8,11 @@ This repository contains resources related to distributed algorithms research.
 - **SupplementaryMaterials/Dataset/**: Contains data used in the research.
 - **SupplementaryMaterials/**: Consists of supplementary results.
 
+## Upcomming New Version
+
+![Upcomming](assets/new_setup.jpg)
+
+
 ## Demonstration Videos
 
 The following videos demonstrate auto-configuration on a 3-bus hardware setup with 5 PCs. One PC acts as a switch controller, while the others act as DG, Load, RES, and ESS.
