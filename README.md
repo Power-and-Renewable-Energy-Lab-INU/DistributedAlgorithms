@@ -1,5 +1,14 @@
 # Distributed Algorithms
 
+
+
+## Upcomming New Version
+
+![Upcomming](assets/new_setup.jpg)
+
+
+# Repository holds currently Older Version described below
+
 This repository contains resources related to distributed algorithms research.
 
 ## Folder Structure
@@ -7,11 +16,6 @@ This repository contains resources related to distributed algorithms research.
 - **assets/**: Contains simulation videos and images.
 - **SupplementaryMaterials/Dataset/**: Contains data used in the research.
 - **SupplementaryMaterials/**: Consists of supplementary results.
-
-## Upcomming New Version
-
-![Upcomming](assets/new_setup.jpg)
-
 
 ## Demonstration Videos
 
