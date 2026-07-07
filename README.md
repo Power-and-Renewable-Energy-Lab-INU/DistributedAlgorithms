@@ -1,10 +1,5 @@
 # Distributed Algorithms
 
-## Dataset Versions
-
-- **Data-v1**: Older dataset version.
-- **Data-v2**: New dataset version.
-
 This repository contains resources related to distributed algorithms research, including both the older and newer dataset versions.
 
 ## Folder Structure
@@ -15,9 +10,9 @@ This repository contains resources related to distributed algorithms research, i
 
 ## Demonstration Video
 
-The following video demonstrates the updated V2 setup and its auto-configuration behavior.
+The following video demonstrates the updated V2 hardware in loop system.
 
-### V2 Demonstration
+### Hardware In Loop System Test Enviornment
 
 - [Hardware.mp4](assets/v2/Hardware.mp4)
 
