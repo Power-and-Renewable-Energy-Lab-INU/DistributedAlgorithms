@@ -1,0 +1,4 @@
+﻿element_id,bus_id,geo_x,geo_y,max_p_kw,alpha,beta,agent_id,ip,type,profile,zone
+1,6,6,1,100,5,15,5,192.168.0.75,RES,r_profile_01,zone_a
+2,7,-6,-2,120,5,15,6,192.168.0.76,RES,r_profile_02,zone_b
+3,11,6,-2,100,5,15,7,192.168.0.77,RES,r_profile_03,zone_c

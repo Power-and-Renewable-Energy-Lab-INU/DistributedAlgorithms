@@ -1,0 +1,6 @@
+﻿element_id,bus_id,geo_x,geo_y,max_p_kw,alpha,beta,min_load_pct,agent_id,ip,type,profile,priority,loss_factor,zone
+1,3,-3,1,60,5,15,0.0,8,192.168.0.78,LOAD,d_profile_01,1,0.040,zone_a
+2,5,3,1,60,5,15,0.0,9,192.168.0.79,LOAD,d_profile_02,1,0.035,zone_a
+3,8,-3,-2,60,5,15,0.0,10,192.168.0.80,LOAD,d_profile_03,1,0.030,zone_b
+4,9,1,-1.5,60,5,15,0.0,11,192.168.0.81,LOAD,d_profile_04,1,0.040,zone_c
+5,13,1,-6,60,5,15,0.0,12,192.168.0.82,LOAD,d_profile_05,1,0.050,zone_c

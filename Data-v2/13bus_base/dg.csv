@@ -1,0 +1,2 @@
+﻿element_id,bus_id,geo_x,geo_y,max_p_kw,alpha,beta,gamma,agent_id,ip,type,scale_cost,zone
+1,2,-6,1,100,0.062,4.20,0.1,1,192.168.0.71,DG,0.01,zone_a

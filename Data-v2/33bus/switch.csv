@@ -1,0 +1,4 @@
+switch_id,a,b,name,geo_x,geo_y
+1,GRID_1,BUS_1,SW-1,-0.5,0
+2,BUS_3,BUS_4,SW-2,2.5,0
+3,BUS_6,BUS_26,SW-3,5,2

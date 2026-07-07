@@ -1,0 +1,4 @@
+﻿element_id,bus_id,geo_x,geo_y,max_e_kwh,alpha,beta,agent_id,ip,type,soc_min,soc_max,soc_init,soc_frequency_reserve,efficiency,scale_cost,zone
+1,1,1,3,150,0.0175,0,2,192.168.0.72,ESS,0.1,0.9,0.3,0.1,0.95,0.1,zone_a
+2,10,3,-2,150,0.0175,0,3,192.168.0.73,ESS,0.1,0.9,0.3,0.1,0.95,0.1,zone_c
+3,12,-2,-6,150,0.0175,0,4,192.168.0.74,ESS,0.1,0.9,0.3,0.1,0.95,0.1,zone_b
