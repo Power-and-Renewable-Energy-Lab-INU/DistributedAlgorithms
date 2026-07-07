@@ -1,57 +1,41 @@
 # Distributed Algorithms
 
+## Dataset Versions
 
+- **Data-v1**: Older dataset version.
+- **Data-v2**: New dataset version.
 
-## Upcomming New Version
-
-![Upcomming](assets/new_setup.jpg)
-
-
-# Repository holds currently Older Version described below
-
-This repository contains resources related to distributed algorithms research.
+This repository contains resources related to distributed algorithms research, including both the older and newer dataset versions.
 
 ## Folder Structure
 
 - **assets/**: Contains simulation videos and images.
-- **SupplementaryMaterials/Dataset/**: Contains data used in the research.
-- **SupplementaryMaterials/**: Consists of supplementary results.
+- **Data-v1/**: Older dataset version.
+- **Data-v2/**: New dataset version.
 
-## Demonstration Videos
+## Demonstration Video
 
-The following videos demonstrate auto-configuration on a 3-bus hardware setup with 5 PCs. One PC acts as a switch controller, while the others act as DG, Load, RES, and ESS.
+The following video demonstrates the updated V2 setup and its auto-configuration behavior.
 
-- **Communication:** The demonstration uses pymodbus TCP for communication. In later versions, communication is replaced with Cyclone DDS, but the videos below use pymodbus TCP.
+### V2 Demonstration
 
-### Video Demonstrations
+- [Hardware.mp4](assets/v2/Hardware.mp4)
 
-- [v1.mp4](assets/v1.mp4)
-- [v2.mp4](assets/v2.mp4)
+![Demonstration GIF](assets/v2/Hardware.gif)
 
-![Demonstration GIF](assets/v2.gif)
+Other supporting materials from the older version are available in [assets/v1](assets/v1).
 
-#### Host PC setup
-- The host PC interface 4 other PCs screens for combined view
-
-![Host PC setup](assets/hardware_test_simulation.png)
-
-## Cyclone DDS
-
-The following images show the auto-configuration demonstration, where the backend data sharing is handled using Cyclone DDS:
-
-![Cyclone DDS 1](assets/cyclone_dds_1.png)
-![Cyclone DDS 2](assets/cyclone_dds_2.png)
-
-## Test Setup Diagram
-
-The test setup is illustrated below:
-
-![3 Bus Test Setup](assets/3_bus_test_setup.png)
 
 ## Code Availability
 
 The code for the distributed algorithms will be made available later.
 
----
-
-**Project supported by KERI.**
+# =============================================================================
+# Author:      Talha Rehman                  (Incheon National University)
+# Co-authors:  Muhammad Ahsan Khan           (Incheon National University)
+#              Woon-Gyu Lee                  (Incheon National University)
+#              Hyeong-Jun Yoo                (KERI)
+#              Hak-Man Kim (Corresponding)   (Incheon National University)
+# Project:     Self-Healing, Autoconfiguration and Resilience Enhancement of
+#              Distribution Systems Considering Faults
+# =============================================================================
