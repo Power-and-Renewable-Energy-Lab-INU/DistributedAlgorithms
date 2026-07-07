@@ -30,12 +30,10 @@ Other supporting materials from the older version are available in [assets/v1](a
 
 The code for the distributed algorithms will be made available later.
 
-# =============================================================================
-# Author:      Talha Rehman                  (Incheon National University)
-# Co-authors:  Muhammad Ahsan Khan           (Incheon National University)
-#              Woon-Gyu Lee                  (Incheon National University)
-#              Hyeong-Jun Yoo                (KERI)
-#              Hak-Man Kim (Corresponding)   (Incheon National University)
-# Project:     Self-Healing, Autoconfiguration and Resilience Enhancement of
-#              Distribution Systems Considering Faults
-# =============================================================================
+
+Author:      Talha Rehman                  (Incheon National University)
+Co-authors:  Muhammad Ahsan Khan           (Incheon National University)
+              Woon-Gyu Lee                  (Incheon National University)
+              Hyeong-Jun Yoo                (KERI)
+              Hak-Man Kim (Corresponding)   (Incheon National University)
+
