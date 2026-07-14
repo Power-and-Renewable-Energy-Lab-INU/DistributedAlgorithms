@@ -265,7 +265,7 @@ def send_step_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=30) as response_handle:
+        with urllib.request.urlopen(request, timeout=300) as response_handle:
             body = response_handle.read().decode("utf-8")
             return json.loads(body)
     except urllib.error.HTTPError as exc:
