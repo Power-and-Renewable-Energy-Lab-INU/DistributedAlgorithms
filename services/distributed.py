@@ -299,7 +299,7 @@ def build_operation_columns(agents: Dict[str, Dict[str, Any]]) -> List[str]:
         elif agent_type == "LOAD":
             columns.extend([f"{agent_name}_value", f"{agent_name}_loss", f"{agent_name}_shed"])
         elif agent_type == "ESS":
-            columns.append(f"{agent_name}_value")
+            columns.extend([f"{agent_name}_value", f"{agent_name}_soc"])
     return columns
 
 
@@ -309,6 +309,7 @@ def build_operation_row(
     agents: Dict[str, Dict[str, Any]],
     profile_values: Dict[str, float],
     normalized_results: Dict[str, float],
+    ess_states: Dict[str, float],
 ) -> Dict[str, Any]:
     row: Dict[str, Any] = {"timestep": timestep_number, "convergence_iteration": convergence_iteration}
     for agent_name, agent_config in agents.items():
@@ -328,6 +329,7 @@ def build_operation_row(
             row[f"{agent_name}_shed"] = round(-abs(shed_value), 6)
         elif agent_type == "ESS":
             row[f"{agent_name}_value"] = normalized_results.get(agent_name, 0.0)
+            row[f"{agent_name}_soc"] = round(ess_states.get(agent_name, 0.0), 6)
     return row
 
 
@@ -387,6 +389,7 @@ def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, 
                 agents,
                 profile_values,
                 normalized_results,
+                ess_states,
             )
         )
 
