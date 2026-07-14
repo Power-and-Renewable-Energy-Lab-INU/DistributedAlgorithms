@@ -1,6 +1,6 @@
 # Distributed Algorithms
 
-This repository contains the resources associated with our research on distributed algorithms. It includes the complete dataset used throughout the study, encompassing both earlier and updated versions to facilitate reproducibility and comparative analysis. At present, we offer limited access to our distributed algorithm through a cloud-based service for public testing and getting results without requiring local deployment. In contrast, the plotting and visualization scripts are fully available within this repository. The full source code of the proposed algorithm will be released in subsequent versions following comprehensive testing, validation, and documentation to ensure reliability, usability, and long-term maintainability.
+This repository contains the resources associated with our research on distributed algorithms. It includes the complete dataset used throughout the study, encompassing both earlier and updated versions to facilitate reproducibility and comparative analysis. At present, we offer limited access to our distributed algorithm through a cloud-based service for public testing and getting results. In contrast, the plotting and visualization scripts are fully available within this repository. The full source code of the proposed algorithm will be released in subsequent versions following comprehensive testing, validation, and documentation to ensure reliability, usability, and long-term maintainability.
 
 ## Folder Structure
 
