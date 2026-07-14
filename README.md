@@ -68,7 +68,7 @@ Run the plotting workflow for the existing 13-bus base case with:
 python services/plottings.py --bus 13bus_base
 ```
 
-The script reads the saved operation results from [results/13bus_base/operation_results.csv](results/13bus_base/operation_results.csv) and the topology inputs from [Data-v2/13bus_base](Data-v2/13bus_base). The topology symbol sizes for the 13-bus and 33-bus cases are controlled by the dataset configuration files [Data-v2/13bus_base/plotting_params.json](Data-v2/13bus_base/plotting_params.json) and [Data-v2/33bus/plotting_params.json](Data-v2/33bus/plotting_params.json).
+The script reads the saved operation results from the corresponding `results/<bus_name>/operation_results.csv` file and the topology inputs from the matching `Data-v2/<bus_name>` dataset folder. For all bus systems, topology symbol sizes are loaded from `Data-v2/<bus_name>/plotting_params.json` when present; if that file is missing, the script uses built-in default symbol size values.
 
 Example result structure for the 13-bus case:
 
