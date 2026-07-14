@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Run the distributed algorithm workflow for a selected Data-v2 bus dataset."""
+# =============================================================================
+# distributed.py
+# Run the distributed algorithm workflow for a selected Data-v2 bus dataset.
+#
+# This service submits the per-timestep dispatch problem for a chosen bus system,
+# collects the operation results, and writes them to results/<bus>/operation_results.csv
+# for downstream plotting and analysis.
+#
+# Usage:
+#   python services/distributed.py --bus 13bus_base --use_chronic chronic_1 --horizon 24
+# =============================================================================
 
 # Author:      Talha Rehman                  (Incheon National University)
 # Co-authors:  Muhammad Ahsan Khan           (Incheon National University)

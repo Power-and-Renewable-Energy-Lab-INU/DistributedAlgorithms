@@ -1,2 +1,4 @@
 # Runtime dependencies for the distributed algorithm service
-# The workflow uses only the Python standard library, so this file is intentionally minimal.
+numpy
+pandas
+matplotlib
