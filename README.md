@@ -28,9 +28,18 @@ The distributed workflow is implemented in [services/distributed.py](services/di
 
 ### Create and activate a virtual environment
 
+### Linux / macOS
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+### Windows (Command Prompt)
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate.bat
 ```
 
 ### Install dependencies
