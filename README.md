@@ -24,7 +24,7 @@ Other supporting materials from the older version are available in [assets/v1](a
 
 ## For Test Running the Distributed Algorithm With Our Default Datasets
 
-The distributed workflow is implemented in [services/distributed.py](services/distributed.py).
+The distributed workflow is implemented in [services/distributed.py](services/distributed.py). Clone or donwload the repository and in the root directory `DistributedAlgorithms/` follow the following steps:
 
 ### Create and activate a virtual environment
 
