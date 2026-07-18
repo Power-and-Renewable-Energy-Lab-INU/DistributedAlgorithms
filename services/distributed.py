@@ -117,6 +117,7 @@ def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
             "alpha": float(row.get("alpha", 0.0)),
             "beta": float(row.get("beta", 0.0)),
             "gamma": float(row.get("gamma", 0.0)),
+            "scale_cost": float(row.get("scale_cost", 1.0)),
             "value": 0.0,
         }
 
@@ -129,6 +130,7 @@ def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
             "alpha": float(row.get("alpha", 0.0)),
             "beta": float(row.get("beta", 0.0)),
             "gamma": 0.0,
+            "scale_cost": float(row.get("scale_cost", 1.0)),
             "profile": row.get("profile", ""),
             "profile_values": [],
             "value": 0.0,
@@ -143,6 +145,7 @@ def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
             "alpha": float(row.get("alpha", 0.0)),
             "beta": float(row.get("beta", 0.0)),
             "gamma": 0.0,
+            "scale_cost": float(row.get("scale_cost", 1.0)),
             "profile": row.get("profile", ""),
             "profile_values": [],
             "loss_factor": float(row.get("loss_factor", 0.0)),
@@ -159,9 +162,11 @@ def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
             "soc_min": float(row.get("soc_min", 0.0)),
             "soc_max": float(row.get("soc_max", 1.0)),
             "soc_current": float(row.get("soc_init", 0.3)),
+            "soc_frequency_reserve": float(row.get("soc_frequency_reserve", 0.0)),
             "alpha": float(row.get("alpha", 0.0)),
             "beta": float(row.get("beta", 0.0)),
             "gamma": 0.0,
+            "scale_cost": float(row.get("scale_cost", 1.0)),
             "value": 0.0,
         }
 
@@ -195,6 +200,7 @@ def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str
             "alpha": agent_config.get("alpha", 0.0),
             "beta": agent_config.get("beta", 0.0),
             "gamma": agent_config.get("gamma", 0.0),
+            "scale_cost": agent_config.get("scale_cost", 1.0),
         }
 
     if agent_type == "RES":
@@ -205,6 +211,7 @@ def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str
             "alpha": agent_config.get("alpha", 0.0),
             "beta": agent_config.get("beta", 0.0),
             "gamma": agent_config.get("gamma", 0.0),
+            "scale_cost": agent_config.get("scale_cost", 1.0),
         }
 
     if agent_type == "LOAD":
@@ -215,6 +222,7 @@ def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str
             "alpha": agent_config.get("alpha", 0.0),
             "beta": agent_config.get("beta", 0.0),
             "gamma": agent_config.get("gamma", 0.0),
+            "scale_cost": agent_config.get("scale_cost", 1.0),
         }
 
     if agent_type == "ESS":
@@ -225,9 +233,11 @@ def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str
             "efficiency": agent_config.get("efficiency", 1.0),
             "soc_min": agent_config.get("soc_min", 0.0),
             "soc_max": agent_config.get("soc_max", 1.0),
+            "soc_frequency_reserve": agent_config.get("soc_frequency_reserve", 0.0),
             "alpha": agent_config.get("alpha", 0.0),
             "beta": agent_config.get("beta", 0.0),
             "gamma": agent_config.get("gamma", 0.0),
+            "scale_cost": agent_config.get("scale_cost", 1.0),
         }
 
     return {"type": agent_type, "value": round(timestep_value, 6)}
