@@ -284,6 +284,72 @@ def send_step_request(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise RuntimeError(f"API request failed: {exc}") from exc
 
 
+def print_response_summary(response: Dict[str, Any], timestep: int) -> None:
+    """Print the API response for this timestep, excluding iteration_results.
+
+    iteration_results can be large (or already stripped server-side when it
+    would push the response over the API's size limit), so it is never
+    dumped to the console -- only status/message/results/convergence_iteration
+    (and any other top-level fields) are printed. Whether iteration_results
+    was actually received is reported separately by handle_iteration_results().
+    """
+    printable = {key: value for key, value in response.items() if key != "iteration_results"}
+    print(f"[timestep {timestep}] response: {json.dumps(printable, indent=2)}")
+
+
+def save_iteration_results_csv(iteration_results: Dict[str, Dict[str, List[float]]], output_dir: Path, timestep: int) -> Path:
+    """Write one CSV per timestep with the per-iteration lambda/delta/p
+    history for every agent: results/<bus>/iteration_results/timestep_<n>.csv
+
+    Columns: iteration, <agent_id>_lambda, <agent_id>_delta, <agent_id>_p, ...
+    """
+    iteration_dir = output_dir / "iteration_results"
+    iteration_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = iteration_dir / f"timestep_{timestep}.csv"
+
+    agent_names = list(iteration_results.keys())
+    series_keys = ("lambda", "delta", "p")
+
+    n_rows = 0
+    for agent_series in iteration_results.values():
+        for key in series_keys:
+            n_rows = max(n_rows, len(agent_series.get(key, [])))
+
+    columns = ["iteration"]
+    for agent_name in agent_names:
+        for key in series_keys:
+            columns.append(f"{agent_name}_{key}")
+
+    with csv_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(columns)
+        for i in range(n_rows):
+            row: List[Any] = [i + 1]
+            for agent_name in agent_names:
+                agent_series = iteration_results[agent_name]
+                for key in series_keys:
+                    values = agent_series.get(key, [])
+                    row.append(values[i] if i < len(values) else "")
+            writer.writerow(row)
+
+    return csv_path
+
+
+def handle_iteration_results(response: Dict[str, Any], output_dir: Path, timestep: int) -> Path | None:
+    """Report whether iteration_results was received for this timestep, and
+    save it to CSV if so. Returns the CSV path, or None if nothing to save
+    (missing key, or empty dict -- e.g. the API omitted it for size reasons,
+    which is explained in the "message" field already printed above)."""
+    iteration_results = response.get("iteration_results")
+    if not iteration_results:
+        print(f"[timestep {timestep}] iteration_results not received.")
+        return None
+
+    csv_path = save_iteration_results_csv(iteration_results, output_dir, timestep)
+    print(f"[timestep {timestep}] iteration_results received and saved to {csv_path}")
+    return csv_path
+
+
 def normalize_results(payload_results: Any) -> Dict[str, float]:
     if not isinstance(payload_results, dict):
         return {}
@@ -366,6 +432,13 @@ def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, 
     repo_root = resolve_repo_root()
     output_dir = repo_root / "results" / bus_data["bus_dir"].name
 
+    # Cleared and recreated up front (rather than only on a fully successful
+    # run) so that per-timestep iteration_results CSVs can be written to
+    # output_dir as the horizon loop progresses below.
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    ensure_output_dirs(output_dir)
+
     agents = bus_data["agents"]
     ess_states = {agent_name: agent_config.get("soc_current", 0.3) for agent_name, agent_config in agents.items() if agent_config["type"] == "ESS"}
     profile_values: Dict[str, float] = {}
@@ -374,7 +447,8 @@ def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, 
     for timestep in range(1, horizon + 1):
         payload = build_payload_for_timestep(bus_data, timestep - 1, ess_states)
         response = send_step_request(payload)
-        print(f"[timestep {timestep}] response: {json.dumps(response, indent=2)}")
+        print_response_summary(response, timestep)
+        handle_iteration_results(response, output_dir, timestep)
 
         status_value = response.get("status")
         if status_value is False or str(status_value).lower() == "false":
@@ -412,10 +486,6 @@ def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, 
                 ess_states,
             )
         )
-
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    ensure_output_dirs(output_dir)
 
     columns = build_operation_columns(agents)
     write_operation_results(output_dir, rows, columns)
