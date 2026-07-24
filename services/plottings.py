@@ -7,9 +7,14 @@
 #   results/<bus>/plots/operation.png    24h stacked operation plot
 #   results/<bus>/plots/convergence.png  per-interval convergence iterations
 #   results/<bus>/plots/topology.png     single-line diagram of the network
+# plus one lambda-convergence figure per timestep that has a saved
+# iteration_results CSV:
+#   results/<bus>/plots/iteration_plots/timestep_<n>_lambda_convergence.png
 #
 # operation.png / convergence.png are built from
 #   results/<bus>/operation_results.csv
+# the per-timestep iteration_plots/ figures are built from
+#   results/<bus>/iteration_results/timestep_<n>.csv
 # topology.png is built from the network files in
 #   Data-v2/<bus>/  (bus.csv, lines.csv, demand.csv, dg.csv, res.csv, ess.csv,
 #                     grid.csv, switch.csv) using symbol sizes read from
@@ -272,6 +277,165 @@ def run_operation_plots(results_dir, plot_dir):
 
     plot_convergence(agg, os.path.join(plot_dir, "convergence.png"))
     print(f"  Saved {os.path.join(plot_dir, 'convergence.png')}")
+
+
+# ===========================================================================
+# iteration_results/timestep_<n>.csv  ->  plots/iteration_plots/*.png
+#
+# One lambda-convergence figure per timestep CSV. All agents of the same
+# category (DG, RES, ESS, LOAD, ...) share one color and one legend entry,
+# regardless of how many individual agents of that category exist.
+# ===========================================================================
+
+# Category -> color, reusing the same palette as the operation plot so the
+# same agent type always reads as the same color across every figure in the
+# report.
+ITERATION_CATEGORY_COLORS = {
+    "DG":   COLORS["dg"],
+    "RES":  COLORS["res"],
+    "ESS":  COLORS["ess"],
+    "LOAD": COLORS["load"],
+    "GRID": COLORS["grid"],
+}
+
+# Fallback palette for any agent category not covered above (e.g. a new
+# dataset introduces a "STORAGE" or "EV" agent type) -- colors are handed
+# out in the order new categories are first encountered and then reused
+# consistently for the rest of the run.
+_ITERATION_FALLBACK_PALETTE = [
+    "#7A6200", "#A30000", "#5B2D8E", "#00695C", "#8E5B2D", "#2D4A8E", "#B5006D",
+]
+_iteration_fallback_cache = {}
+
+
+def _agent_category(column_name):
+    """'DG1_lambda' -> 'DG', 'RES12_lambda' -> 'RES'. Returns None for
+    columns that don't match the '<Category><index>_lambda' pattern."""
+    m = re.match(r"^([A-Za-z]+)\d+_lambda$", column_name)
+    return m.group(1) if m else None
+
+
+def _category_color(category):
+    if category in ITERATION_CATEGORY_COLORS:
+        return ITERATION_CATEGORY_COLORS[category]
+    if category not in _iteration_fallback_cache:
+        idx = len(_iteration_fallback_cache) % len(_ITERATION_FALLBACK_PALETTE)
+        _iteration_fallback_cache[category] = _ITERATION_FALLBACK_PALETTE[idx]
+    return _iteration_fallback_cache[category]
+
+
+def plot_lambda_convergence(iteration_csv_path, save_path, timestep_label):
+    """Plot lambda (consensus price) vs. iteration for every agent found in
+    a single timestep_<n>.csv, colored by agent category with one legend
+    entry per category, legend placed above the axes."""
+    df = pd.read_csv(iteration_csv_path)
+    lambda_cols = [c for c in df.columns if c.endswith("_lambda")]
+    if not lambda_cols or "iteration" not in df.columns:
+        return False
+
+    iterations = df["iteration"].values
+
+    # Font size 12, serif family, applied to title/labels/ticks/legend
+    with plt.rc_context({
+        "font.family": "serif",
+        "font.size": 12,
+        "axes.labelsize": 12,
+        "axes.titlesize": 12,
+        "xtick.labelsize": 12,
+        "ytick.labelsize": 12,
+        "legend.fontsize": 12,
+    }):
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+
+        seen_categories = {}
+        for col in lambda_cols:
+            category = _agent_category(col)
+            if category is None:
+                continue
+
+            color = _category_color(category)
+
+            # Keep only positive values for log-log plotting
+           # mask = (iterations > 0) & (df[col].values > 0)
+
+            ax.plot(
+                iterations,
+                df[col].values,
+                color=color,
+                linewidth=1.2,
+                alpha=0.9,
+                zorder=2,
+            )
+
+            seen_categories.setdefault(category, color)
+
+        legend_handles = [
+            Line2D([0], [0], color=color, linewidth=2.2, label=category)
+            for category, color in sorted(seen_categories.items())
+        ]
+
+        ax.set_xlabel("Iteration")
+        ax.set_ylabel(r"$\lambda$")
+
+          # Set log-log scale
+        #ax.set_xscale("log")
+        #ax.set_yscale("log")
+
+        for spine in ax.spines.values():
+            spine.set_linewidth(SPINE_LW)
+            spine.set_edgecolor(SPINE_COLOR)
+
+        ax.legend(
+            handles=legend_handles,
+            loc="lower center",
+            bbox_to_anchor=(0.5, 1.02),
+            ncol=4,
+            frameon=True,
+            edgecolor="black",
+            fancybox=False,
+            handlelength=1.4,
+            columnspacing=1.0,
+            handletextpad=0.5,
+        )
+
+        fig.tight_layout()
+        fig.savefig(save_path, bbox_inches="tight", facecolor=fig.get_facecolor())
+        plt.close(fig)
+
+    return True
+
+
+def run_iteration_convergence_plots(results_dir, plot_dir):
+    """Generate one lambda-convergence figure per timestep_<n>.csv found in
+    results/<bus>/iteration_results/, saved to plots/iteration_plots/."""
+    iter_dir = os.path.join(results_dir, "iteration_results")
+    if not os.path.isdir(iter_dir):
+        print(f"  [skip] iteration_results not found at {iter_dir}")
+        return
+
+    out_dir = os.path.join(plot_dir, "iteration_plots")
+    os.makedirs(out_dir, exist_ok=True)
+
+    pattern = re.compile(r"^timestep_(\d+)\.csv$")
+    timestep_files = []
+    for fname in os.listdir(iter_dir):
+        m = pattern.match(fname)
+        if m:
+            timestep_files.append((int(m.group(1)), fname))
+    timestep_files.sort(key=lambda t: t[0])
+
+    if not timestep_files:
+        print(f"  [skip] no timestep_*.csv files found in {iter_dir}")
+        return
+
+    for n, fname in timestep_files:
+        csv_path  = os.path.join(iter_dir, fname)
+        save_path = os.path.join(out_dir, f"timestep_{n}_lambda_convergence.png")
+        ok = plot_lambda_convergence(csv_path, save_path, timestep_label=n)
+        if ok:
+            print(f"  Saved {save_path}")
+        else:
+            print(f"  [skip] {csv_path}: no '*_lambda' columns found")
 
 
 # ===========================================================================
@@ -551,6 +715,8 @@ def main():
                               "(default: <data-root>/<bus>/plotting_params.json).")
     parser.add_argument("--skip-topology", action="store_true",
                          help="Skip generating topology.png.")
+    parser.add_argument("--skip-iteration-plots", action="store_true",
+                         help="Skip generating the per-timestep plots/iteration_plots/ figures.")
     args = parser.parse_args()
 
     dataset_dir = os.path.join(args.data_root, args.bus)
@@ -577,6 +743,10 @@ def main():
             print(f"  [skip] {args.operation_csv} not found.")
     else:
         run_operation_plots(results_dir, plot_dir)
+
+    if not args.skip_iteration_plots:
+        print("Iteration (lambda) convergence plots:")
+        run_iteration_convergence_plots(results_dir, plot_dir)
 
     if not args.skip_topology:
         print("Topology plot:")
