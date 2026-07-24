@@ -98,11 +98,12 @@ Only timesteps that actually received `iteration_results` get a CSV -- the folde
 
 ### Generate plots from the saved results
 
-The plotting utility in [services/plottings.py](services/plottings.py) creates three figures for a selected bus system:
+The plotting utility in [services/plottings.py](services/plottings.py) creates the following figures for a selected bus system:
 
 - operation.png: 24-hour stacked operation plot
 - convergence.png: per-interval convergence iteration plot
 - topology.png: single-line network topology diagram
+- iteration_plots/timestep_\<n\>_lambda_convergence.png: one lambda (λ) convergence plot per timestep, generated from every CSV found in `results/<bus_name>/iteration_results/`
 
 Run the plotting workflow for the existing 13-bus base case with:
 
@@ -110,7 +111,24 @@ Run the plotting workflow for the existing 13-bus base case with:
 python services/plottings.py --bus 13bus_base
 ```
 
-The script reads the saved operation results from the corresponding `results/<bus_name>/operation_results.csv` file and the topology inputs from the matching `Data-v2/<bus_name>` dataset folder. For all bus systems, topology symbol sizes are loaded from `Data-v2/<bus_name>/plotting_params.json` when present; if that file is missing, the script uses built-in default symbol size values.
+#### CLI arguments (`services/plottings.py`)
+
+| Argument | Default | Description |
+|---|---|---|
+| `--bus`, `-b` | *(required)* | Bus/dataset folder name (matches the `--bus` used in `distributed.py`). |
+| `--data-root` | `Data-v2` | Root folder containing per-bus dataset folders. |
+| `--results-root` | `results` | Root folder containing per-bus result folders. |
+| `--operation-csv` | `<results-root>/<bus>/operation_results.csv` | Override path to `operation_results.csv`. |
+| `--output-dir` | `<results-root>/<bus>/plots` | Override output folder for the plots. |
+| `--topology-params` | `<data-root>/<bus>/plotting_params.json` | Override path to `plotting_params.json`. |
+| `--skip-topology` | off | Skip generating `topology.png`. |
+| `--skip-iteration-plots` | off | Skip generating the per-timestep `plots/iteration_plots/` figures. |
+
+The script reads the saved operation results from the corresponding `results/<bus_name>/operation_results.csv` file, the per-timestep solver history from `results/<bus_name>/iteration_results/timestep_<n>.csv`, and the topology inputs from the matching `Data-v2/<bus_name>` dataset folder. For all bus systems, topology symbol sizes are loaded from `Data-v2/<bus_name>/plotting_params.json` when present; if that file is missing, the script uses built-in default symbol size values. Pass `--skip-topology` or `--skip-iteration-plots` to omit either of those steps.
+
+#### Lambda (λ) convergence plots
+
+For every `results/<bus_name>/iteration_results/timestep_<n>.csv` file, `plottings.py` produces one figure at `results/<bus_name>/plots/iteration_plots/timestep_<n>_lambda_convergence.png` plotting each agent's `<agent_id>_lambda` column against `iteration`. Agents are colored by category rather than by individual index -- every `DG*` agent shares one color, every `RES*` agent shares another, and so on -- so the legend shows one entry per category (e.g. a single "RES" entry standing in for `RES1`-`RESn`) instead of one entry per agent. The legend is placed above the plot axes in 4 columns, and text (title, axis labels, ticks, legend) is rendered in a serif font at size 12. Only timesteps with a saved `iteration_results` CSV get a figure.
 
 Example result structure for the 13-bus case:
 
@@ -125,7 +143,11 @@ results/
     └── plots/
         ├── operation.png
         ├── convergence.png
-        └── topology.png
+        ├── topology.png
+        └── iteration_plots/
+            ├── timestep_1_lambda_convergence.png
+            ├── timestep_2_lambda_convergence.png
+            └── ...               (one figure per timestep_<n>.csv in iteration_results/)
 ```
 
 ## Code Availability
