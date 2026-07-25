@@ -23,6 +23,10 @@
 #
 # Usage:
 #   python services/plottings.py --bus 13bus_base
+#
+# Each of the four figure types can be skipped independently with
+# --skip-operation, --skip-convergence, --skip-topology, and
+# --skip-iteration-plots.
 # =============================================================================
 
 # Author:      Talha Rehman                  (Incheon National University)
@@ -261,22 +265,6 @@ def plot_convergence(agg, save_path):
     fig.tight_layout()
     fig.savefig(save_path, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
-
-
-def run_operation_plots(results_dir, plot_dir):
-    csv_path = os.path.join(results_dir, "operation_results.csv")
-    if not os.path.isfile(csv_path):
-        print(f"  [skip] operation_results.csv not found at {csv_path}")
-        return
-
-    df  = pd.read_csv(csv_path)
-    agg = build_aggregate_frame(df)
-
-    plot_operation_24h(agg, os.path.join(plot_dir, "operation.png"))
-    print(f"  Saved {os.path.join(plot_dir, 'operation.png')}")
-
-    plot_convergence(agg, os.path.join(plot_dir, "convergence.png"))
-    print(f"  Saved {os.path.join(plot_dir, 'convergence.png')}")
 
 
 # ===========================================================================
@@ -713,7 +701,11 @@ def main():
     parser.add_argument("--topology-params", default=None,
                          help="Override path to plotting_params.json "
                               "(default: <data-root>/<bus>/plotting_params.json).")
-    parser.add_argument("--skip-topology", action="store_true",
+    parser.add_argument("--skip-operation-plot", action="store_true",
+                         help="Skip generating operation.png.")
+    parser.add_argument("--skip-convergence-plot", action="store_true",
+                         help="Skip generating convergence.png.")
+    parser.add_argument("--skip-topology-plot", action="store_true",
                          help="Skip generating topology.png.")
     parser.add_argument("--skip-iteration-plots", action="store_true",
                          help="Skip generating the per-timestep plots/iteration_plots/ figures.")
@@ -729,29 +721,44 @@ def main():
     print(f"Results dir : {results_dir}")
     print(f"Plots dir   : {plot_dir}")
 
-    print("Operation + convergence plots:")
-    if args.operation_csv:
-        # allow a fully custom CSV location
-        if os.path.isfile(args.operation_csv):
-            df  = pd.read_csv(args.operation_csv)
+    csv_path = args.operation_csv or os.path.join(results_dir, "operation_results.csv")
+
+    if not args.skip_operation_plot:
+        print("Operation plot:")
+        if os.path.isfile(csv_path):
+            df  = pd.read_csv(csv_path)
             agg = build_aggregate_frame(df)
             plot_operation_24h(agg, os.path.join(plot_dir, "operation.png"))
             print(f"  Saved {os.path.join(plot_dir, 'operation.png')}")
+        else:
+            print(f"  [skip] {csv_path} not found.")
+    else:
+        print("  [skip] operation.png (--skip-operation-plot)")
+
+    if not args.skip_convergence_plot:
+        print("Convergence plot:")
+        if os.path.isfile(csv_path):
+            df  = pd.read_csv(csv_path)
+            agg = build_aggregate_frame(df)
             plot_convergence(agg, os.path.join(plot_dir, "convergence.png"))
             print(f"  Saved {os.path.join(plot_dir, 'convergence.png')}")
         else:
-            print(f"  [skip] {args.operation_csv} not found.")
+            print(f"  [skip] {csv_path} not found.")
     else:
-        run_operation_plots(results_dir, plot_dir)
+        print("  [skip] convergence.png (--skip-convergence-plot)")
 
     if not args.skip_iteration_plots:
         print("Iteration (lambda) convergence plots:")
         run_iteration_convergence_plots(results_dir, plot_dir)
+    else:
+        print("  [skip] iteration_plots (--skip-iteration-plots)")
 
-    if not args.skip_topology:
+    if not args.skip_topology_plot:
         print("Topology plot:")
         plot_topology(dataset_dir, os.path.join(plot_dir, "topology.png"),
                       params_override=args.topology_params)
+    else:
+        print("  [skip] topology.png (--skip-topology-plot)")
 
     print("Done.")
 
