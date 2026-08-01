@@ -33,6 +33,20 @@ DEFAULT_API_ADDRESS = "https://tie6e8nzmi.execute-api.us-east-1.amazonaws.com/al
 
 
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments for the distributed algorithm CLI.
+
+    Args:
+        argv (List[str] | None): Argument strings to parse instead of
+            sys.argv, or None to parse sys.argv.
+
+    Returns:
+        argparse.Namespace: Parsed arguments with attributes ``bus``,
+        ``use_chronic``, and ``horizon``.
+
+    Raises:
+        SystemExit: If required arguments are missing or invalid, as
+            raised internally by argparse.
+    """
     parser = argparse.ArgumentParser(description="Run the distributed algorithm for a selected Data-v2 bus.")
     parser.add_argument("--bus", required=True, help="Bus dataset folder name under Data-v2, for example 13bus_base")
     parser.add_argument("--use_chronic", required=True, help="Chronic folder name, for example chronic_1")
@@ -41,10 +55,31 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
 
 
 def resolve_repo_root() -> Path:
+    """Resolve the repository root directory relative to this script.
+
+    Returns:
+        Path: Absolute path to the repository root (the parent of the
+        directory containing this file).
+    """
     return Path(__file__).resolve().parent.parent
 
 
 def resolve_bus_dir(bus_name: str, repo_root: Path | None = None) -> Path:
+    """Resolve the dataset directory for a given bus name under Data-v2.
+
+    Args:
+        bus_name (str): Bus dataset folder name under Data-v2, for
+            example "13bus_base".
+        repo_root (Path | None): Repository root to resolve the dataset
+            under, or None to auto-detect via resolve_repo_root().
+
+    Returns:
+        Path: Absolute path to the resolved bus dataset directory.
+
+    Raises:
+        FileNotFoundError: If no matching directory exists under
+            <repo_root>/Data-v2.
+    """
     base = repo_root or resolve_repo_root()
     candidate = base / "Data-v2" / bus_name
     if candidate.exists():
@@ -53,6 +88,20 @@ def resolve_bus_dir(bus_name: str, repo_root: Path | None = None) -> Path:
 
 
 def read_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
+    """Read a CSV file into a list of header-keyed row dictionaries.
+
+    Args:
+        csv_path (Path): Path to the CSV file to read.
+
+    Returns:
+        List[Dict[str, str]]: One dictionary per data row, keyed by the
+        (stripped, BOM-free) header column names. Returns an empty list
+        if the file has no rows.
+
+    Raises:
+        FileNotFoundError: If csv_path does not exist.
+        OSError: If the file cannot be opened or read.
+    """
     with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.reader(handle))
 
@@ -64,6 +113,22 @@ def read_csv_rows(csv_path: Path) -> List[Dict[str, str]]:
 
 
 def load_profile_multipliers(csv_path: Path) -> Dict[str, List[float]]:
+    """Load per-profile multiplier series from a chronic CSV file.
+
+    Args:
+        csv_path (Path): Path to a profile-multiplier CSV (for example
+            demandmultiplier.csv, renewablemultiplier.csv, or
+            prices.csv), where each non-empty column header is a
+            profile name and each row holds one timestep's values.
+
+    Returns:
+        Dict[str, List[float]]: Mapping of profile name to its list of
+        multiplier values in row order. Returns an empty dict if the
+        file does not exist or has no rows.
+
+    Raises:
+        ValueError: If a value in the CSV cannot be converted to float.
+    """
     if not csv_path.exists():
         return {}
 
@@ -86,6 +151,20 @@ def load_profile_multipliers(csv_path: Path) -> Dict[str, List[float]]:
 
 
 def validate_agent_limit(agents: Dict[str, Dict[str, Any]], max_agents: int = 150) -> None:
+    """Validate that the number of loaded agents does not exceed a limit.
+
+    Args:
+        agents (Dict[str, Dict[str, Any]]): Mapping of agent name to
+            agent configuration.
+        max_agents (int): Maximum number of agents supported by the
+            workflow. Defaults to 150.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If len(agents) exceeds max_agents.
+    """
     if len(agents) > max_agents:
         raise ValueError(
             f"This workflow supports at most {max_agents} agents for resource constraints, but {len(agents)} were loaded."
@@ -93,6 +172,32 @@ def validate_agent_limit(agents: Dict[str, Dict[str, Any]], max_agents: int = 15
 
 
 def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
+    """Load a bus dataset's static topology data and chronic profiles.
+
+    Reads demand/res/dg/ess CSVs from bus_dir, builds an agent
+    configuration dictionary for every DG, RES, LOAD, and ESS element,
+    attaches demand/renewable profile multiplier series to RES/LOAD
+    agents, and validates the total agent count.
+
+    Args:
+        bus_dir (Path): Path to the bus dataset directory (as returned
+            by resolve_bus_dir).
+        chronic_name (str): Chronic folder name under bus_dir/chronics
+            to load profile multipliers and prices from. Falls back to
+            bus_dir itself if the chronic folder does not exist.
+
+    Returns:
+        Dict[str, Any]: Dataset dictionary with keys "bus_dir",
+        "chronic_name", "agents", "demand_multipliers",
+        "renewable_multipliers", and "prices".
+
+    Raises:
+        FileNotFoundError: If a required demand.csv, res.csv, dg.csv,
+            or ess.csv file is missing under bus_dir.
+        ValueError: If the number of loaded agents exceeds the limit
+            enforced by validate_agent_limit, or if a numeric field in
+            the source CSVs cannot be converted to float.
+    """
     chronic_dir = bus_dir / "chronics" / chronic_name
     if not chronic_dir.exists():
         chronic_dir = bus_dir
@@ -193,6 +298,24 @@ def load_bus_dataset(bus_dir: Path, chronic_name: str) -> Dict[str, Any]:
 
 
 def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str, Any], timestep_value: float) -> Dict[str, Any]:
+    """Build the per-agent request payload for a single API timestep call.
+
+    Args:
+        agent_name (str): Name of the agent (unused directly, kept for
+            call-site symmetry with other per-agent helpers).
+        agent_type (str): Agent category, one of "DG", "RES", "LOAD",
+            "ESS", or another custom type.
+        agent_config (Dict[str, Any]): Agent configuration dictionary
+            as produced by load_bus_dataset.
+        timestep_value (float): Value relevant to this agent at the
+            current timestep (for example, forecast RES/LOAD power or
+            DG setpoint), used depending on agent_type.
+
+    Returns:
+        Dict[str, Any]: Payload fields for this agent to send to the
+        distributed algorithm API. Unrecognized agent_type values fall
+        back to a minimal payload with "type" and rounded "value".
+    """
     if agent_type == "DG":
         return {
             "type": "DG",
@@ -244,6 +367,26 @@ def build_agent_payload(agent_name: str, agent_type: str, agent_config: Dict[str
 
 
 def build_payload_for_timestep(bus_data: Dict[str, Any], timestep_index: int, ess_states: Dict[str, float]) -> Dict[str, Dict[str, Any]]:
+    """Build the full API request payload for every agent at one timestep.
+
+    Computes each RES/LOAD agent's forecast value from its profile
+    multiplier at timestep_index, applies the current ESS state of
+    charge, and delegates per-agent payload construction to
+    build_agent_payload.
+
+    Args:
+        bus_data (Dict[str, Any]): Dataset dictionary as returned by
+            load_bus_dataset.
+        timestep_index (int): Zero-based index into each agent's
+            profile_values series for the current timestep.
+        ess_states (Dict[str, float]): Mapping of ESS agent name to its
+            current state of charge, used to override each ESS agent's
+            "soc_current" for this timestep.
+
+    Returns:
+        Dict[str, Dict[str, Any]]: Mapping of agent name to its request
+        payload for this timestep.
+    """
     payload: Dict[str, Dict[str, Any]] = {}
     for agent_name, agent_config in bus_data["agents"].items():
         agent_type = agent_config["type"]
@@ -267,6 +410,19 @@ def build_payload_for_timestep(bus_data: Dict[str, Any], timestep_index: int, es
 
 
 def send_step_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Send one timestep's payload to the distributed algorithm API.
+
+    Args:
+        payload (Dict[str, Any]): Per-agent request payload for a
+            single timestep, as built by build_payload_for_timestep.
+
+    Returns:
+        Dict[str, Any]: Parsed JSON response body from the API.
+
+    Raises:
+        RuntimeError: If the request fails with an HTTP error status or
+            a lower-level URL/connection error.
+    """
     request = urllib.request.Request(
         DEFAULT_API_ADDRESS,
         data=json.dumps(payload).encode("utf-8"),
@@ -285,23 +441,51 @@ def send_step_request(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def print_response_summary(response: Dict[str, Any], timestep: int) -> None:
-    """Print the API response for this timestep, excluding iteration_results.
+    """Print the API response for a timestep, excluding iteration_results.
 
-    iteration_results can be large (or already stripped server-side when it
-    would push the response over the API's size limit), so it is never
-    dumped to the console -- only status/message/results/convergence_iteration
-    (and any other top-level fields) are printed. Whether iteration_results
-    was actually received is reported separately by handle_iteration_results().
+    iteration_results can be large (or already stripped server-side when
+    it would push the response over the API's size limit), so it is
+    never dumped to the console -- only status/message/results/
+    convergence_iteration (and any other top-level fields) are printed.
+    Whether iteration_results was actually received is reported
+    separately by handle_iteration_results().
+
+    Args:
+        response (Dict[str, Any]): Parsed JSON response from the API
+            for this timestep.
+        timestep (int): 1-based timestep number, used in the printed
+            log prefix.
+
+    Returns:
+        None
     """
     printable = {key: value for key, value in response.items() if key != "iteration_results"}
     print(f"[timestep {timestep}] response: {json.dumps(printable, indent=2)}")
 
 
 def save_iteration_results_csv(iteration_results: Dict[str, Dict[str, List[float]]], output_dir: Path, timestep: int) -> Path:
-    """Write one CSV per timestep with the per-iteration lambda/delta/p
-    history for every agent: results/<bus>/iteration_results/timestep_<n>.csv
+    """Write one CSV of per-iteration lambda/delta/p history for every agent.
 
-    Columns: iteration, <agent_id>_lambda, <agent_id>_delta, <agent_id>_p, ...
+    Output is written to
+    results/<bus>/iteration_results/timestep_<n>.csv with columns
+    "iteration", "<agent_id>_lambda", "<agent_id>_delta",
+    "<agent_id>_p", ... for each agent in iteration_results.
+
+    Args:
+        iteration_results (Dict[str, Dict[str, List[float]]]): Mapping
+            of agent name to a dict of series name ("lambda", "delta",
+            "p") to per-iteration value lists.
+        output_dir (Path): Base results directory for this bus dataset
+            (results/<bus>).
+        timestep (int): 1-based timestep number, used to name the
+            output CSV file.
+
+    Returns:
+        Path: Path to the written CSV file.
+
+    Raises:
+        OSError: If the iteration_results directory cannot be created
+            or the CSV file cannot be written.
     """
     iteration_dir = output_dir / "iteration_results"
     iteration_dir.mkdir(parents=True, exist_ok=True)
@@ -336,10 +520,29 @@ def save_iteration_results_csv(iteration_results: Dict[str, Dict[str, List[float
 
 
 def handle_iteration_results(response: Dict[str, Any], output_dir: Path, timestep: int) -> Path | None:
-    """Report whether iteration_results was received for this timestep, and
-    save it to CSV if so. Returns the CSV path, or None if nothing to save
-    (missing key, or empty dict -- e.g. the API omitted it for size reasons,
-    which is explained in the "message" field already printed above)."""
+    """Report and, if present, persist a timestep's iteration_results.
+
+    Checks whether the API response included iteration_results for
+    this timestep and, if so, saves it to CSV via
+    save_iteration_results_csv.
+
+    Args:
+        response (Dict[str, Any]): Parsed JSON response from the API
+            for this timestep.
+        output_dir (Path): Base results directory for this bus dataset
+            (results/<bus>).
+        timestep (int): 1-based timestep number.
+
+    Returns:
+        Path | None: Path to the saved CSV file, or None if
+        iteration_results was missing or empty (for example, when the
+        API omitted it for response-size reasons, as explained in the
+        "message" field already printed above).
+
+    Raises:
+        OSError: If the iteration_results directory cannot be created
+            or the CSV file cannot be written.
+    """
     iteration_results = response.get("iteration_results")
     if not iteration_results:
         print(f"[timestep {timestep}] iteration_results not received.")
@@ -351,6 +554,18 @@ def handle_iteration_results(response: Dict[str, Any], output_dir: Path, timeste
 
 
 def normalize_results(payload_results: Any) -> Dict[str, float]:
+    """Coerce an API "results" payload into a clean agent-name-to-float map.
+
+    Args:
+        payload_results (Any): Value of the "results" field from an API
+            response, expected to be a dict mapping agent name to a
+            numeric-like value.
+
+    Returns:
+        Dict[str, float]: Mapping of agent name to float value. Entries
+        that are not dict-convertible to float are skipped. Returns an
+        empty dict if payload_results is not a dict.
+    """
     if not isinstance(payload_results, dict):
         return {}
 
@@ -365,16 +580,63 @@ def normalize_results(payload_results: Any) -> Dict[str, float]:
 
 
 def update_ess_soc(soc_current: float, setpoint: float, efficiency: float, e_max: float) -> float:
+    """Update an ESS agent's state of charge after a dispatch setpoint.
+
+    Discharging (setpoint > 0) reduces SOC by the setpoint scaled by
+    the round-trip efficiency; charging (setpoint <= 0) reduces SOC by
+    the setpoint scaled inversely by efficiency (charging setpoints are
+    expected to be negative, so this increases SOC).
+
+    Args:
+        soc_current (float): State of charge before applying setpoint,
+            as a fraction of capacity.
+        setpoint (float): Dispatched power for this timestep; positive
+            for discharge, non-positive for charge.
+        efficiency (float): Round-trip efficiency factor used to derate
+            energy delivered/absorbed.
+        e_max (float): ESS energy capacity used to convert power to a
+            fractional SOC change.
+
+    Returns:
+        float: Updated state of charge as a fraction of capacity.
+
+    Raises:
+        ZeroDivisionError: If efficiency or e_max is zero.
+    """
     if setpoint > 0:
         return soc_current - ((setpoint / efficiency) / e_max)
     return soc_current - ((setpoint * efficiency) / e_max)
 
 
 def ensure_output_dirs(output_dir: Path) -> None:
+    """Create the results output directory if it does not already exist.
+
+    Args:
+        output_dir (Path): Directory to create, including any missing
+            parent directories.
+
+    Returns:
+        None
+
+    Raises:
+        OSError: If the directory cannot be created (for example, due
+            to insufficient permissions).
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
 
 def build_operation_columns(agents: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Build the operation_results.csv column header list for all agents.
+
+    Args:
+        agents (Dict[str, Dict[str, Any]]): Mapping of agent name to
+            agent configuration, as produced by load_bus_dataset.
+
+    Returns:
+        List[str]: Ordered column names starting with "timestep" and
+        "convergence_iteration", followed by type-specific value/loss/
+        shed/curtail/soc columns per agent.
+    """
     columns = ["timestep", "convergence_iteration"]
     for agent_name, agent_config in agents.items():
         agent_type = agent_config["type"]
@@ -397,6 +659,26 @@ def build_operation_row(
     normalized_results: Dict[str, float],
     ess_states: Dict[str, float],
 ) -> Dict[str, Any]:
+    """Build one operation_results.csv row for a single timestep.
+
+    Args:
+        timestep_number (int): 1-based timestep number for this row.
+        convergence_iteration (int): Number of iterations the
+            distributed algorithm took to converge at this timestep.
+        agents (Dict[str, Dict[str, Any]]): Mapping of agent name to
+            agent configuration, as produced by load_bus_dataset.
+        profile_values (Dict[str, float]): Mapping of RES/LOAD agent
+            name to their dispatched forecast value for this timestep.
+        normalized_results (Dict[str, float]): Mapping of agent name to
+            the API-returned setpoint/curtailment/shed value for this
+            timestep, as produced by normalize_results.
+        ess_states (Dict[str, float]): Mapping of ESS agent name to its
+            state of charge after this timestep's dispatch.
+
+    Returns:
+        Dict[str, Any]: Row dictionary keyed by the columns produced by
+        build_operation_columns for this timestep.
+    """
     row: Dict[str, Any] = {"timestep": timestep_number, "convergence_iteration": convergence_iteration}
     for agent_name, agent_config in agents.items():
         agent_type = agent_config["type"]
@@ -420,6 +702,23 @@ def build_operation_row(
 
 
 def write_operation_results(output_dir: Path, rows: List[Dict[str, Any]], columns: List[str]) -> None:
+    """Write the full-horizon operation results table to CSV.
+
+    Args:
+        output_dir (Path): Base results directory for this bus dataset
+            (results/<bus>); the file is written to
+            output_dir/operation_results.csv.
+        rows (List[Dict[str, Any]]): Per-timestep row dictionaries, as
+            produced by build_operation_row.
+        columns (List[str]): Ordered column names to use as the CSV
+            header, as produced by build_operation_columns.
+
+    Returns:
+        None
+
+    Raises:
+        OSError: If the output file cannot be written.
+    """
     operation_path = output_dir / "operation_results.csv"
     with operation_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
@@ -429,6 +728,29 @@ def write_operation_results(output_dir: Path, rows: List[Dict[str, Any]], column
 
 
 def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, Any]:
+    """Run the distributed dispatch algorithm across a full time horizon.
+
+    Recreates the bus's results directory, then for each timestep
+    builds and sends the API payload, records the response summary and
+    any iteration_results, updates ESS states of charge, and
+    accumulates operation rows. Writes operation_results.csv on
+    successful completion of all timesteps.
+
+    Args:
+        bus_data (Dict[str, Any]): Dataset dictionary as returned by
+            load_bus_dataset.
+        horizon (int): Number of timesteps to simulate.
+
+    Returns:
+        Dict[str, Any]: Result dictionary with keys "output_dir" (Path
+        to the results directory), "rows" (accumulated operation rows),
+        "status" (bool, True on full success), and "message" (str,
+        present only when status is False).
+
+    Raises:
+        RuntimeError: If an API request fails for any timestep, as
+            raised by send_step_request.
+    """
     repo_root = resolve_repo_root()
     output_dir = repo_root / "results" / bus_data["bus_dir"].name
 
@@ -494,6 +816,24 @@ def run_horizon_simulation(bus_data: Dict[str, Any], horizon: int) -> Dict[str, 
 
 
 def main(argv: List[str] | None = None) -> int:
+    """Entry point: parse arguments and run the distributed algorithm workflow.
+
+    Args:
+        argv (List[str] | None): Argument strings to parse instead of
+            sys.argv, or None to parse sys.argv.
+
+    Returns:
+        int: Process exit code; always 0 on completion, whether the
+        simulation succeeded or was aborted by the API.
+
+    Raises:
+        FileNotFoundError: If the requested bus dataset cannot be
+            located, as raised by resolve_bus_dir.
+        ValueError: If the bus dataset exceeds the supported agent
+            count, as raised by validate_agent_limit.
+        RuntimeError: If an API request fails, as raised by
+            send_step_request.
+    """
     args = parse_args(argv)
     repo_root = resolve_repo_root()
     bus_dir = resolve_bus_dir(args.bus, repo_root)
