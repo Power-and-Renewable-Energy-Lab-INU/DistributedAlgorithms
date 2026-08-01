@@ -111,15 +111,39 @@ FIGSIZE = (6, 4)
 # ===========================================================================
 
 def _cols_matching(df, pattern):
+    """Return DataFrame column names matching a regex pattern.
+
+    Args:
+        df (pandas.DataFrame): DataFrame whose columns are searched.
+        pattern (str): Regular expression matched against the start of
+            each column name via re.match.
+
+    Returns:
+        List[str]: Column names that match pattern, in DataFrame order.
+    """
     rx = re.compile(pattern)
     return [c for c in df.columns if rx.match(c)]
 
 
 def build_aggregate_frame(df):
-    """Collapse the per-unit operation_results.csv columns (DGn_value,
+    """Collapse per-unit operation results into system-level totals.
+
+    Aggregates per-unit operation_results.csv columns (DGn_value,
     RESn_value, RESn_curtail, LOADn_value, LOADn_shed, ESSn_value, ...)
-    into one row per timestep with system-level totals. Works regardless
-    of how many DG/RES/LOAD/ESS units are present in the dataset."""
+    into one row per timestep with system-level totals. Works
+    regardless of how many DG/RES/LOAD/ESS units are present in the
+    dataset.
+
+    Args:
+        df (pandas.DataFrame): Operation results loaded from
+            operation_results.csv, with a "timestep" column and
+            per-unit value/curtail/shed columns.
+
+    Returns:
+        pandas.DataFrame: One row per timestep with columns
+        "timestep", "convergence_iteration", "dg", "res", "ess",
+        "load", "grid", "res_curtail", and "shed".
+    """
     dg_cols       = _cols_matching(df, r"^DG\d+_value$")
     res_cols      = _cols_matching(df, r"^RES\d+_value$")
     rescurt_cols  = _cols_matching(df, r"^RES\d+_curtail$")
@@ -153,14 +177,37 @@ def build_aggregate_frame(df):
 
 
 def _thinned_xticklabels(values):
+    """Build x-axis tick labels showing only every other value.
+
+    Args:
+        values (Sequence[float]): Tick values in axis order.
+
+    Returns:
+        List[str]: Same length as values; even-indexed entries are
+        stringified integers, odd-indexed entries are empty strings.
+    """
     return [str(int(v)) if i % 2 == 0 else "" for i, v in enumerate(values)]
 
 
 def plot_operation_24h(agg, save_path):
-    """24h stacked operation plot — same visual language as
-    ResultsAnalysis.py::plot_operation_24h (fixed 7-entry legend, DG/RES/ESS/
-    grid/shed stacked positive, ESS-charge/grid-export/curtailment stacked
-    negative, dashed load line on top)."""
+    """Render and save the 24h stacked operation plot.
+
+    Uses the same visual language as ResultsAnalysis.py::
+    plot_operation_24h: a fixed 7-entry legend, DG/RES/ESS/grid/shed
+    stacked above zero, ESS-charge/grid-export/curtailment stacked
+    below zero, and a dashed load line on top.
+
+    Args:
+        agg (pandas.DataFrame): Aggregated per-timestep totals, as
+            produced by build_aggregate_frame.
+        save_path (str): File path the figure is saved to.
+
+    Returns:
+        None
+
+    Raises:
+        OSError: If save_path cannot be written to.
+    """
     hours     = agg["timestep"].values
     bar_width = 0.7
 
@@ -243,8 +290,23 @@ def plot_operation_24h(agg, save_path):
 
 
 def plot_convergence(agg, save_path):
-    """Per-interval convergence iterations — round markers, blue fill,
-    black edges. x-axis: Interval, y-axis: Iteration #."""
+    """Render and save the per-interval convergence-iteration scatter plot.
+
+    Plots round markers (blue fill, black edges) with x-axis "Interval"
+    and y-axis "Iteration #".
+
+    Args:
+        agg (pandas.DataFrame): Aggregated per-timestep totals with a
+            "convergence_iteration" column, as produced by
+            build_aggregate_frame.
+        save_path (str): File path the figure is saved to.
+
+    Returns:
+        None
+
+    Raises:
+        OSError: If save_path cannot be written to.
+    """
     x = agg["timestep"].values
     y = agg["convergence_iteration"].values
 
@@ -297,13 +359,36 @@ _iteration_fallback_cache = {}
 
 
 def _agent_category(column_name):
-    """'DG1_lambda' -> 'DG', 'RES12_lambda' -> 'RES'. Returns None for
-    columns that don't match the '<Category><index>_lambda' pattern."""
+    """Extract the agent category from an iteration-results lambda column.
+
+    For example, "DG1_lambda" -> "DG", "RES12_lambda" -> "RES".
+
+    Args:
+        column_name (str): Column name from a timestep_<n>.csv file.
+
+    Returns:
+        str | None: The matched category, or None if column_name does
+        not match the "<Category><index>_lambda" pattern.
+    """
     m = re.match(r"^([A-Za-z]+)\d+_lambda$", column_name)
     return m.group(1) if m else None
 
 
 def _category_color(category):
+    """Resolve the plot color for an agent category, caching fallbacks.
+
+    Known categories (DG, RES, ESS, LOAD, GRID) use
+    ITERATION_CATEGORY_COLORS. Unknown categories are assigned colors
+    from _ITERATION_FALLBACK_PALETTE in first-seen order and cached in
+    _iteration_fallback_cache for consistent reuse.
+
+    Args:
+        category (str): Agent category name, as returned by
+            _agent_category.
+
+    Returns:
+        str: Hex color string for the category.
+    """
     if category in ITERATION_CATEGORY_COLORS:
         return ITERATION_CATEGORY_COLORS[category]
     if category not in _iteration_fallback_cache:
@@ -313,9 +398,27 @@ def _category_color(category):
 
 
 def plot_lambda_convergence(iteration_csv_path, save_path, timestep_label):
-    """Plot lambda (consensus price) vs. iteration for every agent found in
-    a single timestep_<n>.csv, colored by agent category with one legend
-    entry per category, legend placed above the axes."""
+    """Render and save one timestep's lambda-convergence figure.
+
+    Plots lambda (consensus price) vs. iteration for every agent found
+    in a single timestep_<n>.csv, colored by agent category with one
+    legend entry per category, legend placed above the axes.
+
+    Args:
+        iteration_csv_path (str): Path to a
+            results/<bus>/iteration_results/timestep_<n>.csv file.
+        save_path (str): File path the figure is saved to.
+        timestep_label (int): Timestep number associated with this
+            plot (currently used for caller-side logging only).
+
+    Returns:
+        bool: True if the figure was generated and saved; False if the
+        CSV has no "*_lambda" columns or no "iteration" column.
+
+    Raises:
+        FileNotFoundError: If iteration_csv_path does not exist.
+        OSError: If save_path cannot be written to.
+    """
     df = pd.read_csv(iteration_csv_path)
     lambda_cols = [c for c in df.columns if c.endswith("_lambda")]
     if not lambda_cols or "iteration" not in df.columns:
@@ -394,8 +497,22 @@ def plot_lambda_convergence(iteration_csv_path, save_path, timestep_label):
 
 
 def run_iteration_convergence_plots(results_dir, plot_dir):
-    """Generate one lambda-convergence figure per timestep_<n>.csv found in
-    results/<bus>/iteration_results/, saved to plots/iteration_plots/."""
+    """Generate lambda-convergence figures for every saved timestep.
+
+    Iterates over timestep_<n>.csv files found in
+    results_dir/iteration_results/ and saves one lambda-convergence
+    figure per file to plot_dir/iteration_plots/.
+
+    Args:
+        results_dir (str): Results directory for a bus dataset
+            (results/<bus>), expected to contain an
+            iteration_results/ subfolder.
+        plot_dir (str): Base output directory for plots; figures are
+            written under plot_dir/iteration_plots/.
+
+    Returns:
+        None
+    """
     iter_dir = os.path.join(results_dir, "iteration_results")
     if not os.path.isdir(iter_dir):
         print(f"  [skip] iteration_results not found at {iter_dir}")
@@ -468,6 +585,26 @@ REQUIRED_TOPOLOGY_FILES = [
 
 
 def load_topology_params(dataset_dir, params_override=None):
+    """Load topology symbol-size parameters, falling back to defaults.
+
+    Args:
+        dataset_dir (str): Bus dataset directory expected to contain a
+            plotting_params.json file (used when params_override is
+            not given).
+        params_override (str | None): Explicit path to a JSON params
+            file, overriding the default
+            dataset_dir/plotting_params.json location.
+
+    Returns:
+        Dict[str, float]: Merged parameter dictionary with keys
+        R_NODE, R_RES, R_DG, R_ESS, R_GRID, R_BOLT, and LW, using
+        DEFAULT_TOPOLOGY_PARAMS for any keys not present in the file.
+
+    Raises:
+        json.JSONDecodeError: If the params file exists but is not
+            valid JSON.
+        OSError: If the params file exists but cannot be read.
+    """
     params = dict(DEFAULT_TOPOLOGY_PARAMS)
     params_path = params_override or os.path.join(dataset_dir, "plotting_params.json")
     if os.path.isfile(params_path):
@@ -480,12 +617,42 @@ def load_topology_params(dataset_dir, params_override=None):
 
 
 def topology_files_present(dataset_dir):
+    """Check that all files required to draw the topology diagram exist.
+
+    Args:
+        dataset_dir (str): Bus dataset directory to check.
+
+    Returns:
+        Tuple[bool, List[str]]: A tuple of (all_present, missing) where
+        all_present is True only if every file in
+        REQUIRED_TOPOLOGY_FILES exists under dataset_dir, and missing
+        lists the file names that are absent.
+    """
     missing = [f for f in REQUIRED_TOPOLOGY_FILES
                if not os.path.isfile(os.path.join(dataset_dir, f))]
     return (len(missing) == 0), missing
 
 
 def _resolve_endpoint(label, pos, grid_pos):
+    """Resolve a switch endpoint label to its kind, id, and coordinates.
+
+    Args:
+        label (str): Endpoint label formatted as "<KIND>_<id>", where
+            KIND is "BUS" or "GRID".
+        pos (Dict[int, Tuple[float, float]]): Mapping of bus id to
+            (x, y) coordinates.
+        grid_pos (Dict[int, Tuple[float, float]]): Mapping of grid id
+            to (x, y) coordinates.
+
+    Returns:
+        Tuple[str, int, Tuple[float, float]]: The endpoint kind ("BUS"
+        or "GRID"), its numeric id, and its (x, y) coordinates.
+
+    Raises:
+        ValueError: If label's kind is not "BUS" or "GRID".
+        KeyError: If the parsed id is not present in the corresponding
+            position mapping.
+    """
     kind, num = label.split("_")
     num = int(num)
     if kind == "BUS":
@@ -496,6 +663,18 @@ def _resolve_endpoint(label, pos, grid_pos):
 
 
 def _add_bolt(ax, x, y, r, zorder=4):
+    """Draw a lightning-bolt marker (fault/switch symbol) on the axes.
+
+    Args:
+        ax (matplotlib.axes.Axes): Axes to draw the bolt marker on.
+        x (float): X coordinate of the bolt's origin.
+        y (float): Y coordinate of the bolt's origin.
+        r (float): Scale radius applied to the bolt path.
+        zorder (int): Draw order of the bolt patch. Defaults to 4.
+
+    Returns:
+        None
+    """
     transform = Affine2D().scale(r).translate(x, y) + ax.transData
     patch = mpatches.PathPatch(
         BOLT_PATH, transform=transform, facecolor=TOPO_COLOR_BOLT_FACE,
@@ -505,9 +684,29 @@ def _add_bolt(ax, x, y, r, zorder=4):
 
 
 def plot_topology(dataset_dir, save_path, params_override=None):
-    """Single-line diagram of the network, ported from the 33-bus /
-    123-bus reference scripts and generalized to any --bus dataset via
-    plotting_params.json (R_NODE, R_RES, R_DG, R_ESS, R_GRID, R_BOLT, LW)."""
+    """Render and save a single-line diagram of the network topology.
+
+    Ported from the 33-bus / 123-bus reference scripts and generalized
+    to any --bus dataset via plotting_params.json (R_NODE, R_RES,
+    R_DG, R_ESS, R_GRID, R_BOLT, LW).
+
+    Args:
+        dataset_dir (str): Bus dataset directory expected to contain
+            bus.csv, lines.csv, demand.csv, dg.csv, res.csv, ess.csv,
+            grid.csv, and switch.csv.
+        save_path (str): File path the figure is saved to.
+        params_override (str | None): Explicit path to a topology
+            params JSON file, passed through to load_topology_params.
+
+    Returns:
+        None. If required topology files are missing, the function
+        prints a skip message and returns without generating a figure.
+
+    Raises:
+        OSError: If save_path cannot be written to.
+        KeyError: If lines/switch reference a bus or grid id absent
+            from bus.csv or grid.csv.
+    """
     ok, missing = topology_files_present(dataset_dir)
     if not ok:
         print(f"  [skip] topology: missing files in {dataset_dir}: {missing}")
@@ -683,6 +882,23 @@ def plot_topology(dataset_dir, save_path, params_override=None):
 # ===========================================================================
 
 def main():
+    """Entry point: parse CLI arguments and generate the selected plots.
+
+    Generates operation.png, convergence.png, per-timestep
+    iteration_plots/ figures, and topology.png for the requested bus
+    dataset, skipping any figure type disabled via its --skip-* flag
+    or whose required input file is missing.
+
+    Args:
+        None. Arguments are read from sys.argv via argparse.
+
+    Returns:
+        None
+
+    Raises:
+        SystemExit: If required CLI arguments are missing or invalid,
+            as raised internally by argparse.
+    """
     parser = argparse.ArgumentParser(
         description="Plot operation results, convergence, and topology for a bus system."
     )
